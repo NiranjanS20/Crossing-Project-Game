@@ -24,7 +24,13 @@
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
-            touch-action: none; /* MOBILE+ UPDATE: Prevent page scroll */
+            touch-action: none;
+            margin: 0;
+            padding: 0;
+            /* MOBILE+ UPDATE: Better mobile viewport handling */
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         
         .game-container {
@@ -33,9 +39,12 @@
             border-radius: 8px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             background: #FFD700;
-            /* MOBILE+ UPDATE: Responsive sizing */
-            width: min(92vw, 800px);
-            height: min(92vh, 600px);
+            /* MOBILE+ UPDATE: Better responsive sizing */
+            width: min(95vw, min(95vh, 800px));
+            height: min(95vh, min(95vw, 600px));
+            max-width: 800px;
+            max-height: 600px;
+            aspect-ratio: 4/3;
         }
         
         #gameCanvas {
@@ -51,15 +60,26 @@
         
         .controls {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
+            bottom: 10px;
+            right: 10px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 5px;
-            /* MOBILE+ UPDATE: Larger touch targets */
-            width: min(180px, 25vw);
-            height: min(180px, 25vw);
+            gap: 3px;
+            /* MOBILE+ UPDATE: Better mobile sizing */
+            width: min(150px, 20vw);
+            height: min(150px, 20vw);
+            z-index: 100;
+        }
+        
+        /* MOBILE+ UPDATE: Larger controls on mobile */
+        @media (max-width: 768px) {
+            .controls {
+                width: min(180px, 25vw);
+                height: min(180px, 25vw);
+                bottom: 15px;
+                right: 15px;
+            }
         }
         
         .control-btn {
@@ -98,11 +118,22 @@
         
         .hud {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 10px;
+            left: 10px;
             color: #000;
             font-size: min(12px, 3vw);
             text-shadow: 2px 2px 0px #fff;
+            z-index: 100;
+            line-height: 1.4;
+        }
+        
+        /* MOBILE+ UPDATE: Better HUD on mobile */
+        @media (max-width: 768px) {
+            .hud {
+                font-size: min(10px, 2.5vw);
+                top: 15px;
+                left: 15px;
+            }
         }
         
         .popup {
@@ -183,6 +214,37 @@
         }
         
         /* MOBILE+ UPDATE: Remove mobile warning - now mobile compatible */
+        
+        /* MOBILE+ UPDATE: Additional mobile optimizations */
+        @media (max-width: 768px) {
+            body {
+                /* Prevent zoom on double tap */
+                touch-action: manipulation;
+            }
+            
+            .game-container {
+                border-width: 2px;
+                border-radius: 4px;
+            }
+            
+            .popup {
+                padding: min(20px, 4vw);
+                font-size: min(8px, 2vw);
+                max-width: 85%;
+            }
+            
+            .splash-screen {
+                padding: 15px;
+            }
+        }
+        
+        /* MOBILE+ UPDATE: Landscape mobile optimization */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .game-container {
+                width: min(90vh, 95vw);
+                height: min(90vw, 95vh);
+            }
+        }
     </style>
 </head>
 <body>
@@ -238,6 +300,10 @@
             canvasWidth = rect.width - 8; // Account for border
             canvasHeight = rect.height - 8;
             
+            // Ensure minimum playable size
+            canvasWidth = Math.max(320, canvasWidth);
+            canvasHeight = Math.max(240, canvasHeight);
+            
             // Set canvas size with device pixel ratio for crisp rendering
             const dpr = window.devicePixelRatio || 1;
             canvas.width = canvasWidth * dpr;
@@ -247,6 +313,12 @@
             
             ctx.scale(dpr, dpr);
             ctx.imageSmoothingEnabled = false;
+            
+            // MOBILE+ UPDATE: Adjust game elements based on canvas size
+            GAME_CONFIG.PLAYER_SIZE = Math.max(12, Math.min(20, canvasWidth / 40));
+            GAME_CONFIG.CAR_WIDTH = Math.max(30, Math.min(50, canvasWidth / 20));
+            GAME_CONFIG.CAR_HEIGHT = Math.max(15, Math.min(25, canvasHeight / 30));
+            GAME_CONFIG.LANE_HEIGHT = Math.max(40, Math.min(80, canvasHeight / 10));
         }
         
         // Game configuration
@@ -524,18 +596,22 @@
         
         // MOBILE+ UPDATE: Draw road with wider median
         function drawRoad() {
+            const roadStartY = canvasHeight * 0.2; // Start road at 20% from top
+            const roadHeight = canvasHeight * 0.6; // Road takes 60% of canvas height
+            
             // Draw road background
             ctx.fillStyle = '#333333';
-            ctx.fillRect(0, 120, canvasWidth, GAME_CONFIG.ROAD_LANES * GAME_CONFIG.LANE_HEIGHT);
+            ctx.fillRect(0, roadStartY, canvasWidth, roadHeight);
             
             // Draw lane dividers
             ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 10]);
+            ctx.lineWidth = Math.max(1, canvasWidth / 400);
+            ctx.setLineDash([Math.max(5, canvasWidth / 80), Math.max(5, canvasWidth / 80)]);
             
+            const laneHeight = roadHeight / GAME_CONFIG.ROAD_LANES;
             for (let i = 1; i < GAME_CONFIG.ROAD_LANES; i++) {
                 if (i === 3) continue; // Skip median line
-                const y = 120 + (i * GAME_CONFIG.LANE_HEIGHT);
+                const y = roadStartY + (i * laneHeight);
                 ctx.beginPath();
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvasWidth, y);
@@ -545,13 +621,15 @@
             // MOBILE+ UPDATE: Draw wider median strip
             ctx.setLineDash([]);
             ctx.fillStyle = '#f4dab2'; // Light sand/beige color
-            const medianY = 120 + (3 * GAME_CONFIG.LANE_HEIGHT) - 20; // Wider median
-            ctx.fillRect(0, medianY, canvasWidth, 40); // Double height for wider median
+            const medianY = roadStartY + (3 * laneHeight) - (laneHeight * 0.3);
+            const medianHeight = laneHeight * 0.6;
+            ctx.fillRect(0, medianY, canvasWidth, medianHeight);
             
             // Median borders
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, medianY, canvasWidth, 3); // Top border
-            ctx.fillRect(0, medianY + 37, canvasWidth, 3); // Bottom border
+            const borderHeight = Math.max(2, canvasHeight / 200);
+            ctx.fillRect(0, medianY, canvasWidth, borderHeight); // Top border
+            ctx.fillRect(0, medianY + medianHeight - borderHeight, canvasWidth, borderHeight); // Bottom border
         }
         
         // Draw player with animations
