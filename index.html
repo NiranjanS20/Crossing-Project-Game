@@ -17,6 +17,7 @@
             font-family: 'Press Start 2P', monospace;
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
@@ -47,6 +48,15 @@
             aspect-ratio: 4/3;
         }
         
+        /* MOBILE+ UPDATE: Adjust game container for mobile with controls below */
+        @media (max-width: 768px) {
+            .game-container {
+                width: min(90vw, 500px);
+                height: min(60vh, 375px);
+                max-height: calc(100vh - 200px); /* Leave space for controls */
+            }
+        }
+        
         #gameCanvas {
             display: block;
             background: #FFD700;
@@ -72,26 +82,36 @@
             z-index: 100;
         }
         
-        /* MOBILE+ UPDATE: Better positioned controls on mobile */
+        /* MOBILE+ UPDATE: Mobile controls below game screen */
         @media (max-width: 768px) {
+            body {
+                justify-content: flex-start;
+                padding-top: 2vh;
+            }
+            
+            .game-container {
+                margin-bottom: 10px;
+            }
+            
             .controls {
-                width: min(140px, 22vw);
-                height: min(140px, 22vw);
-                bottom: 5px;
-                right: 5px;
-                /* MOBILE+ UPDATE: Ensure controls stay within screen */
-                max-width: calc(100vw - 10px);
-                max-height: calc(100vh - 10px);
+                position: relative;
+                bottom: auto;
+                right: auto;
+                left: auto;
+                top: auto;
+                width: 160px;
+                height: 160px;
+                margin: 10px auto 0;
+                /* MOBILE+ UPDATE: Center controls below game */
+                align-self: center;
             }
         }
         
         /* MOBILE+ UPDATE: Extra small screens */
         @media (max-width: 480px) {
             .controls {
-                width: min(120px, 20vw);
-                height: min(120px, 20vw);
-                bottom: 3px;
-                right: 3px;
+                width: 140px;
+                height: 140px;
             }
         }
         
@@ -146,8 +166,8 @@
                 font-size: min(10px, 2.5vw);
                 top: 5px;
                 left: 5px;
-                /* MOBILE+ UPDATE: Ensure HUD doesn't overlap with controls */
-                max-width: calc(100vw - 160px);
+                /* MOBILE+ UPDATE: No overlap issues with controls below */
+                max-width: none;
             }
         }
         
@@ -157,7 +177,6 @@
                 font-size: min(8px, 2vw);
                 top: 3px;
                 left: 3px;
-                max-width: calc(100vw - 140px);
             }
         }
         
