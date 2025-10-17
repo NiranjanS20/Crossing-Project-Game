@@ -1,4 +1,4 @@
-🛣️ Crosswalk Dash Plus – Mumbai Traffic Challenge
+**🛣️ Crosswalk Dash Plus – Mumbai Traffic Challenge**
 
 Crosswalk Dash Plus is a retro-style, pixelated browser game inspired by the chaotic yet vibrant streets of Mumbai.
 Your goal is simple: help your pedestrian cross the busy road safely while avoiding speeding cars and learning interesting facts about Mumbai’s traffic and pedestrian safety.
@@ -75,4 +75,5 @@ Audio toggle and background music.
 Project: Crosswalk Dash Plus
 Theme: Mumbai Traffic Awareness
 Version: 1.0 (Mobile Optimized)
+
 Languages: HTML / CSS / JavaScript
