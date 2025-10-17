@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Crosswalk Dash Plus - Mumbai Traffic Challenge</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P:wght@400&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            touch-action: none; /* MOBILE+ UPDATE: Prevent page scroll */
+        }
+        
+        .game-container {
+            position: relative;
+            border: 4px solid #000;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            background: #FFD700;
+            /* MOBILE+ UPDATE: Responsive sizing */
+            width: min(92vw, 800px);
+            height: min(92vh, 600px);
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #FFD700;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            touch-action: none; /* MOBILE+ UPDATE: Prevent touch scrolling */
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            /* MOBILE+ UPDATE: Larger touch targets */
+            width: min(180px, 25vw);
+            height: min(180px, 25vw);
+        }
+        
+        .control-btn {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #fff;
+            color: #fff;
+            font-size: min(16px, 4vw);
+            font-family: 'Press Start 2P', monospace;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation; /* MOBILE+ UPDATE: Optimize touch */
+            /* MOBILE+ UPDATE: Minimum touch target size */
+            min-width: 64px;
+            min-height: 64px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .control-btn:active, .control-btn.pressed {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            transform: scale(0.95);
+        }
+        
+        .control-btn:nth-child(1) { grid-column: 2; grid-row: 1; }
+        .control-btn:nth-child(2) { grid-column: 1; grid-row: 2; }
+        .control-btn:nth-child(3) { grid-column: 3; grid-row: 2; }
+        .control-btn:nth-child(4) { grid-column: 2; grid-row: 3; }
+        
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #000;
+            font-size: min(12px, 3vw);
+            text-shadow: 2px 2px 0px #fff;
+        }
+        
+        .popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 30px;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 10px;
+            line-height: 1.6;
+            max-width: 400px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .popup.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+        
+        .popup h3 {
+            color: #FFD700;
+            margin-bottom: 15px;
+            font-size: min(12px, 3vw);
+        }
+        
+        .splash-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease;
+        }
+        
+        .splash-screen h1 {
+            color: #FFD700;
+            margin-bottom: 20px;
+            font-size: min(16px, 4vw);
+        }
+        
+        .splash-screen p {
+            margin-bottom: 30px;
+            font-size: min(10px, 2.5vw);
+            line-height: 1.6;
+            max-width: 90%;
+        }
+        
+        .start-btn {
+            background: #FFD700;
+            color: #000;
+            border: 3px solid #fff;
+            padding: min(15px, 3vw) min(30px, 6vw);
+            font-family: 'Press Start 2P', monospace;
+            font-size: min(12px, 3vw);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+        }
+        
+        .start-btn:hover {
+            background: #FFA500;
+            transform: scale(1.05);
+        }
+        
+        /* MOBILE+ UPDATE: Remove mobile warning - now mobile compatible */
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="hud">
+            <div>Score: <span id="score">0</span></div>
+            <div>Crosses: <span id="crosses">0</span></div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" data-key="ArrowUp">↑</button>
+            <button class="control-btn" data-key="ArrowLeft">←</button>
+            <button class="control-btn" data-key="ArrowRight">→</button>
+            <button class="control-btn" data-key="ArrowDown">↓</button>
+        </div>
+        
+        <div class="popup" id="popup">
+            <h3 id="popup-title"></h3>
+            <p id="popup-text"></p>
+        </div>
+        
+        <div class="splash-screen" id="splashScreen">
+            <h1>Crosswalk Dash Plus</h1>
+            <p>Help your pedestrian cross safely in Mumbai's chaos!<br><br>Use arrow keys or on-screen controls to navigate through traffic.<br>Survive the crossing to earn points and unlock interesting facts!</p>
+            <button class="start-btn" onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+
+    <script>
+        // MOBILE+ UPDATE: Performance and mobile constants
+        const CAR_SPEED_MULTIPLIER = 1.15; // Slight increase
+        const SWIPE_THRESHOLD = 24;
+        const TARGET_FPS = 60;
+        const STEP = 1 / TARGET_FPS;
+        
+        // Game state and configuration
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const crossesElement = document.getElementById('crosses');
+        const popup = document.getElementById('popup');
+        const splashScreen = document.getElementById('splashScreen');
+        
+        // MOBILE+ UPDATE: Dynamic sizing variables
+        let canvasWidth, canvasHeight;
+        
+        // MOBILE+ UPDATE: Initialize responsive canvas
+        function initCanvas() {
+            const container = document.querySelector('.game-container');
+            const rect = container.getBoundingClientRect();
+            canvasWidth = rect.width - 8; // Account for border
+            canvasHeight = rect.height - 8;
+            
+            // Set canvas size with device pixel ratio for crisp rendering
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvasWidth * dpr;
+            canvas.height = canvasHeight * dpr;
+            canvas.style.width = canvasWidth + 'px';
+            canvas.style.height = canvasHeight + 'px';
+            
+            ctx.scale(dpr, dpr);
+            ctx.imageSmoothingEnabled = false;
+        }
+        
+        // Game configuration
+        const GAME_CONFIG = {
+            PLAYER_SIZE: 16,
+            CAR_WIDTH: 40,
+            CAR_HEIGHT: 20,
+            LANE_HEIGHT: 60,
+            ROAD_LANES: 6, // 3 above median, 3 below median
+            CAR_SPEED: 2,
+            PLAYER_SPEED: 4
+        };
+        
+        // MOBILE+ UPDATE: Touch handling variables
+        let touchStart = { x: 0, y: 0 };
+        let touchActive = false;
+        
+        // Game state
+        let gameState = {
+            running: false,
+            score: 0,
+            crosses: 0,
+            player: {
+                x: 0,
+                y: 0,
+                size: GAME_CONFIG.PLAYER_SIZE,
+                alive: true,
+                animationState: 'normal'
+            },
+            cars: [],
+            keys: {},
+            sounds: {
+                enabled: true,
+                ambient: null
+            },
+            animations: {
+                deathFade: 0,
+                winBounce: 0,
+                levelComplete: false
+            }
+        };
+        
+        // Car colors for variety
+        const CAR_COLORS = ['#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF'];
+        
+        // Educational notes
+        const DEATH_NOTES = [
+            "Mumbai records over 1,500 pedestrian fatalities annually due to traffic accidents.",
+            "Jaywalking accounts for 40% of pedestrian deaths in Indian metropolitan cities.",
+            "The average reaction time for drivers in heavy traffic is 2.5 seconds.",
+            "Mumbai's traffic density is among the highest globally with 510 vehicles per km of road.",
+            "Pedestrian crossings reduce accident risk by 85% when used properly.",
+            "Rush hour (8-10 AM, 6-8 PM) sees 60% more pedestrian accidents in Mumbai.",
+            "Distracted walking while using phones increases accident risk by 300%.",
+            "Mumbai's Western Express Highway sees the highest pedestrian casualty rates."
+        ];
+        
+        const WIN_NOTES = [
+            "Mumbai has over 200 designated pedestrian crossings across the city.",
+            "The city's first skywalk was built in 2008 to improve pedestrian safety.",
+            "Mumbai's traffic police conduct regular pedestrian safety awareness campaigns.",
+            "Zebra crossings were first introduced in Mumbai in 1975.",
+            "The average Mumbai resident walks 2.5 km daily navigating traffic.",
+            "Mumbai's suburban railway system safely transports 7.5 million passengers daily.",
+            "Traffic signals in Mumbai are timed to optimize both vehicle and pedestrian flow.",
+            "The city has implemented 150+ speed breakers near schools and hospitals for safety."
+        ];
+        
+        // Audio context for sound effects
+        let audioContext;
+        let ambientSound = false;
+        
+        // Initialize audio context
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+        
+        // Generate simple sound effects
+        function playSound(frequency, duration, type = 'sine') {
+            if (!audioContext || !gameState.sounds.enabled) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = type;
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+        
+        // Play ambient traffic sound
+        function toggleAmbientSound() {
+            if (!audioContext) return;
+            
+            if (ambientSound) {
+                ambientSound = false;
+            } else {
+                ambientSound = true;
+                playAmbientLoop();
+            }
+        }
+        
+        function playAmbientLoop() {
+            if (!ambientSound || !audioContext) return;
+            
+            // Create a simple ambient traffic sound
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            oscillator.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(80 + Math.random() * 40, audioContext.currentTime);
+            oscillator.type = 'sawtooth';
+            filter.frequency.setValueAtTime(200, audioContext.currentTime);
+            filter.type = 'lowpass';
+            
+            gainNode.gain.setValueAtTime(0.02, audioContext.currentTime);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 2);
+            
+            setTimeout(() => {
+                if (ambientSound) playAmbientLoop();
+            }, 1500 + Math.random() * 1000);
+        }
+        
+        // MOBILE+ UPDATE: Initialize cars with slight speed increase
+        function initCars() {
+            gameState.cars = [];
+            
+            for (let lane = 0; lane < GAME_CONFIG.ROAD_LANES; lane++) {
+                const y = 120 + (lane * GAME_CONFIG.LANE_HEIGHT);
+                const direction = lane < 3 ? 1 : -1; // Top 3 lanes go right, bottom 3 go left
+                
+                // Add 2-3 cars per lane with random spacing
+                const carsInLane = 2 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < carsInLane; i++) {
+                    gameState.cars.push({
+                        x: direction > 0 ? -200 - (i * 150) : canvasWidth + 200 + (i * 150),
+                        y: y,
+                        width: GAME_CONFIG.CAR_WIDTH,
+                        height: GAME_CONFIG.CAR_HEIGHT,
+                        speed: (GAME_CONFIG.CAR_SPEED + Math.random() * 2) * CAR_SPEED_MULTIPLIER,
+                        direction: direction,
+                        color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)],
+                        lane: lane
+                    });
+                }
+            }
+        }
+        
+        // Reset player position
+        function resetPlayer() {
+            gameState.player.x = canvasWidth / 2;
+            gameState.player.y = canvasHeight - 50;
+            gameState.player.alive = true;
+            gameState.player.animationState = 'normal';
+            gameState.animations.deathFade = 0;
+            gameState.animations.winBounce = 0;
+            gameState.animations.levelComplete = false;
+        }
+        
+        // Check collision between player and cars
+        function checkCollisions() {
+            if (!gameState.player.alive) return;
+            
+            for (let car of gameState.cars) {
+                if (gameState.player.x < car.x + car.width &&
+                    gameState.player.x + gameState.player.size > car.x &&
+                    gameState.player.y < car.y + car.height &&
+                    gameState.player.y + gameState.player.size > car.y) {
+                    
+                    // Collision detected
+                    gameState.player.alive = false;
+                    gameState.player.animationState = 'dying';
+                    playSound(200, 0.5, 'sawtooth'); // Crash sound
+                    
+                    setTimeout(() => {
+                        showPopup('Traffic Incident!', getRandomNote(DEATH_NOTES));
+                        setTimeout(() => {
+                            resetPlayer();
+                            hidePopup();
+                        }, 3000);
+                    }, 1000);
+                    
+                    return;
+                }
+            }
+        }
+        
+        // Check if player reached the top (win condition)
+        function checkWin() {
+            if (gameState.player.y <= 50 && gameState.player.alive && !gameState.animations.levelComplete) {
+                gameState.animations.levelComplete = true;
+                gameState.player.animationState = 'winning';
+                gameState.score += 100;
+                gameState.crosses++;
+                
+                playSound(440, 0.3); // Success sound
+                playSound(554, 0.3); // Harmony
+                
+                setTimeout(() => {
+                    showPopup('Safe Crossing!', getRandomNote(WIN_NOTES));
+                    setTimeout(() => {
+                        resetPlayer();
+                        hidePopup();
+                        updateHUD();
+                    }, 3000);
+                }, 500);
+            }
+        }
+        
+        // Get random note from array
+        function getRandomNote(notesArray) {
+            return notesArray[Math.floor(Math.random() * notesArray.length)];
+        }
+        
+        // Show popup with animation
+        function showPopup(title, text) {
+            document.getElementById('popup-title').textContent = title;
+            document.getElementById('popup-text').textContent = text;
+            popup.classList.add('show');
+        }
+        
+        // Hide popup
+        function hidePopup() {
+            popup.classList.remove('show');
+        }
+        
+        // Update HUD elements
+        function updateHUD() {
+            scoreElement.textContent = gameState.score;
+            crossesElement.textContent = gameState.crosses;
+        }
+        
+        // Draw Mumbai skyline silhouette
+        function drawSkyline() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            
+            // Simple building silhouettes
+            const buildings = [
+                {x: 50, y: 30, w: 40, h: 60},
+                {x: 100, y: 20, w: 60, h: 70},
+                {x: 170, y: 40, w: 30, h: 50},
+                {x: 210, y: 15, w: 50, h: 75},
+                {x: 270, y: 35, w: 40, h: 55},
+                {x: 320, y: 25, w: 45, h: 65},
+                {x: 380, y: 45, w: 35, h: 45},
+                {x: 430, y: 20, w: 55, h: 70},
+                {x: 500, y: 40, w: 40, h: 50},
+                {x: 550, y: 30, w: 50, h: 60},
+                {x: 610, y: 35, w: 45, h: 55},
+                {x: 670, y: 25, w: 40, h: 65},
+                {x: 720, y: 40, w: 50, h: 50}
+            ];
+            
+            buildings.forEach(building => {
+                ctx.fillRect(building.x, building.y, building.w, building.h);
+            });
+        }
+        
+        // MOBILE+ UPDATE: Draw road with wider median
+        function drawRoad() {
+            // Draw road background
+            ctx.fillStyle = '#333333';
+            ctx.fillRect(0, 120, canvasWidth, GAME_CONFIG.ROAD_LANES * GAME_CONFIG.LANE_HEIGHT);
+            
+            // Draw lane dividers
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            
+            for (let i = 1; i < GAME_CONFIG.ROAD_LANES; i++) {
+                if (i === 3) continue; // Skip median line
+                const y = 120 + (i * GAME_CONFIG.LANE_HEIGHT);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+                ctx.stroke();
+            }
+            
+            // MOBILE+ UPDATE: Draw wider median strip
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#f4dab2'; // Light sand/beige color
+            const medianY = 120 + (3 * GAME_CONFIG.LANE_HEIGHT) - 20; // Wider median
+            ctx.fillRect(0, medianY, canvasWidth, 40); // Double height for wider median
+            
+            // Median borders
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, medianY, canvasWidth, 3); // Top border
+            ctx.fillRect(0, medianY + 37, canvasWidth, 3); // Bottom border
+        }
+        
+        // Draw player with animations
+        function drawPlayer() {
+            const player = gameState.player;
+            
+            if (player.animationState === 'dying') {
+                gameState.animations.deathFade += 0.05;
+                ctx.globalAlpha = Math.max(0, 1 - gameState.animations.deathFade);
+            } else if (player.animationState === 'winning') {
+                gameState.animations.winBounce += 0.3;
+                const bounce = Math.sin(gameState.animations.winBounce) * 5;
+                player.y += bounce;
+            }
+            
+            // Draw player as white pixel character
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+            
+            // Add simple pixel details
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(player.x + 4, player.y + 4, 2, 2); // Left eye
+            ctx.fillRect(player.x + 10, player.y + 4, 2, 2); // Right eye
+            ctx.fillRect(player.x + 6, player.y + 8, 4, 2); // Mouth
+            
+            ctx.globalAlpha = 1;
+        }
+        
+        // Draw cars with smooth animation
+        function drawCars() {
+            gameState.cars.forEach(car => {
+                ctx.fillStyle = car.color;
+                ctx.fillRect(car.x, car.y, car.width, car.height);
+                
+                // Add car details
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(car.x + 5, car.y + 3, 8, 6); // Window
+                ctx.fillRect(car.x + car.width - 13, car.y + 3, 8, 6); // Window
+                
+                // Wheels
+                ctx.fillStyle = '#222222';
+                ctx.fillRect(car.x + 5, car.y - 2, 6, 4);
+                ctx.fillRect(car.x + car.width - 11, car.y - 2, 6, 4);
+                ctx.fillRect(car.x + 5, car.y + car.height - 2, 6, 4);
+                ctx.fillRect(car.x + car.width - 11, car.y + car.height - 2, 6, 4);
+            });
+        }
+        
+        // Update car positions
+        function updateCars() {
+            gameState.cars.forEach(car => {
+                car.x += car.speed * car.direction;
+                
+                // Reset car position when it goes off screen
+                if (car.direction > 0 && car.x > canvasWidth + 100) {
+                    car.x = -car.width - Math.random() * 200;
+                } else if (car.direction < 0 && car.x < -car.width - 100) {
+                    car.x = canvasWidth + Math.random() * 200;
+                }
+            });
+        }
+        
+        // Handle player movement
+        function updatePlayer() {
+            if (!gameState.player.alive || gameState.animations.levelComplete) return;
+            
+            const player = gameState.player;
+            
+            if (gameState.keys['ArrowUp'] || gameState.keys['w']) {
+                player.y = Math.max(50, player.y - GAME_CONFIG.PLAYER_SPEED);
+                playSound(300, 0.1, 'square'); // Move sound
+            }
+            if (gameState.keys['ArrowDown'] || gameState.keys['s']) {
+                player.y = Math.min(canvasHeight - player.size - 20, player.y + GAME_CONFIG.PLAYER_SPEED);
+                playSound(300, 0.1, 'square'); // Move sound
+            }
+            if (gameState.keys['ArrowLeft'] || gameState.keys['a']) {
+                player.x = Math.max(0, player.x - GAME_CONFIG.PLAYER_SPEED);
+                playSound(300, 0.1, 'square'); // Move sound
+            }
+            if (gameState.keys['ArrowRight'] || gameState.keys['d']) {
+                player.x = Math.min(canvasWidth - player.size, player.x + GAME_CONFIG.PLAYER_SPEED);
+                playSound(300, 0.1, 'square'); // Move sound
+            }
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            if (!gameState.running) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Draw background elements
+            drawSkyline();
+            drawRoad();
+            
+            // Update game objects
+            updateCars();
+            updatePlayer();
+            
+            // Draw game objects
+            drawCars();
+            drawPlayer();
+            
+            // Check game conditions
+            checkCollisions();
+            checkWin();
+            
+            // Continue game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // MOBILE+ UPDATE: Touch and swipe handling
+        function handleTouchStart(e) {
+            if (!gameState.player.alive || gameState.animations.levelComplete) return;
+            
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            touchStart.x = touch.clientX - rect.left;
+            touchStart.y = touch.clientY - rect.top;
+            touchActive = true;
+        }
+        
+        function handleTouchEnd(e) {
+            if (!touchActive || !gameState.player.alive || gameState.animations.levelComplete) return;
+            
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchEnd = {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top
+            };
+            
+            const deltaX = touchEnd.x - touchStart.x;
+            const deltaY = touchEnd.y - touchStart.y;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            if (distance > SWIPE_THRESHOLD) {
+                // Determine swipe direction
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        gameState.player.x = Math.min(canvasWidth - gameState.player.size, gameState.player.x + GAME_CONFIG.PLAYER_SPEED * 3);
+                    } else {
+                        gameState.player.x = Math.max(0, gameState.player.x - GAME_CONFIG.PLAYER_SPEED * 3);
+                    }
+                } else {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        gameState.player.y = Math.min(canvasHeight - gameState.player.size - 20, gameState.player.y + GAME_CONFIG.PLAYER_SPEED * 3);
+                    } else {
+                        gameState.player.y = Math.max(50, gameState.player.y - GAME_CONFIG.PLAYER_SPEED * 3);
+                    }
+                }
+                playSound(300, 0.1, 'square');
+            }
+            
+            touchActive = false;
+        }
+        
+        // Start the game
+        function startGame() {
+            splashScreen.style.opacity = '0';
+            setTimeout(() => {
+                splashScreen.style.display = 'none';
+            }, 500);
+            
+            initCanvas();
+            initAudio();
+            gameState.running = true;
+            initCars();
+            resetPlayer();
+            updateHUD();
+            toggleAmbientSound();
+            gameLoop();
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.key] = true;
+            
+            // Highlight corresponding control button
+            const btn = document.querySelector(`[data-key="${e.key}"]`);
+            if (btn) btn.classList.add('pressed');
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.key] = false;
+            
+            // Remove highlight from control button
+            const btn = document.querySelector(`[data-key="${e.key}"]`);
+            if (btn) btn.classList.remove('pressed');
+        });
+        
+        // MOBILE+ UPDATE: Touch events for canvas
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        // Control button events
+        document.querySelectorAll('.control-btn').forEach(btn => {
+            ['mousedown', 'touchstart'].forEach(event => {
+                btn.addEventListener(event, (e) => {
+                    e.preventDefault();
+                    const key = btn.getAttribute('data-key');
+                    gameState.keys[key] = true;
+                    btn.classList.add('pressed');
+                }, { passive: false });
+            });
+            
+            ['mouseup', 'touchend', 'mouseleave', 'touchcancel'].forEach(event => {
+                btn.addEventListener(event, (e) => {
+                    e.preventDefault();
+                    const key = btn.getAttribute('data-key');
+                    gameState.keys[key] = false;
+                    btn.classList.remove('pressed');
+                }, { passive: false });
+            });
+        });
+        
+        // Prevent context menu on right click
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // MOBILE+ UPDATE: Handle window resize
+        window.addEventListener('resize', () => {
+            if (gameState.running) {
+                initCanvas();
+            }
+        });
+        
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', () => {
+            initCanvas();
+        });
+    </script>
+</body>
+</html>
