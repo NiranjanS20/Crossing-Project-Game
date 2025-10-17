@@ -459,12 +459,19 @@
             }, 1500 + Math.random() * 1000);
         }
         
-        // MOBILE+ UPDATE: Initialize cars with slight speed increase
+        // MOBILE+ UPDATE: Initialize cars with proper road positioning
         function initCars() {
             gameState.cars = [];
             
+            const roadStartY = canvasHeight * 0.2; // Start road at 20% from top
+            const roadHeight = canvasHeight * 0.6; // Road takes 60% of canvas height
+            const laneHeight = roadHeight / GAME_CONFIG.ROAD_LANES;
+            
             for (let lane = 0; lane < GAME_CONFIG.ROAD_LANES; lane++) {
-                const y = 120 + (lane * GAME_CONFIG.LANE_HEIGHT);
+                // Skip the median lane (lane 3)
+                if (lane === 3) continue;
+                
+                const y = roadStartY + (lane * laneHeight) + (laneHeight * 0.2); // Center cars in lanes
                 const direction = lane < 3 ? 1 : -1; // Top 3 lanes go right, bottom 3 go left
                 
                 // Add 2-3 cars per lane with random spacing
@@ -487,7 +494,8 @@
         // Reset player position
         function resetPlayer() {
             gameState.player.x = canvasWidth / 2;
-            gameState.player.y = canvasHeight - 50;
+            // MOBILE+ UPDATE: Start player on bottom footpath, not on road
+            gameState.player.y = canvasHeight * 0.85; // 85% down - on bottom footpath
             gameState.player.alive = true;
             gameState.player.animationState = 'normal';
             gameState.animations.deathFade = 0;
@@ -525,7 +533,9 @@
         
         // Check if player reached the top (win condition)
         function checkWin() {
-            if (gameState.player.y <= 50 && gameState.player.alive && !gameState.animations.levelComplete) {
+            // MOBILE+ UPDATE: Win when player reaches top footpath
+            const topFootpathY = canvasHeight * 0.15; // Top 15% is footpath
+            if (gameState.player.y <= topFootpathY && gameState.player.alive && !gameState.animations.levelComplete) {
                 gameState.animations.levelComplete = true;
                 gameState.player.animationState = 'winning';
                 gameState.score += 100;
@@ -698,12 +708,16 @@
             
             const player = gameState.player;
             
+            // MOBILE+ UPDATE: Proper movement boundaries
+            const topBoundary = canvasHeight * 0.05; // Top 5% boundary
+            const bottomBoundary = canvasHeight * 0.95 - player.size; // Bottom 5% boundary
+            
             if (gameState.keys['ArrowUp'] || gameState.keys['w']) {
-                player.y = Math.max(50, player.y - GAME_CONFIG.PLAYER_SPEED);
+                player.y = Math.max(topBoundary, player.y - GAME_CONFIG.PLAYER_SPEED);
                 playSound(300, 0.1, 'square'); // Move sound
             }
             if (gameState.keys['ArrowDown'] || gameState.keys['s']) {
-                player.y = Math.min(canvasHeight - player.size - 20, player.y + GAME_CONFIG.PLAYER_SPEED);
+                player.y = Math.min(bottomBoundary, player.y + GAME_CONFIG.PLAYER_SPEED);
                 playSound(300, 0.1, 'square'); // Move sound
             }
             if (gameState.keys['ArrowLeft'] || gameState.keys['a']) {
@@ -771,6 +785,10 @@
             const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
             
             if (distance > SWIPE_THRESHOLD) {
+                // MOBILE+ UPDATE: Use proper boundaries for swipe movement
+                const topBoundary = canvasHeight * 0.05;
+                const bottomBoundary = canvasHeight * 0.95 - gameState.player.size;
+                
                 // Determine swipe direction
                 if (Math.abs(deltaX) > Math.abs(deltaY)) {
                     // Horizontal swipe
@@ -782,9 +800,9 @@
                 } else {
                     // Vertical swipe
                     if (deltaY > 0) {
-                        gameState.player.y = Math.min(canvasHeight - gameState.player.size - 20, gameState.player.y + GAME_CONFIG.PLAYER_SPEED * 3);
+                        gameState.player.y = Math.min(bottomBoundary, gameState.player.y + GAME_CONFIG.PLAYER_SPEED * 3);
                     } else {
-                        gameState.player.y = Math.max(50, gameState.player.y - GAME_CONFIG.PLAYER_SPEED * 3);
+                        gameState.player.y = Math.max(topBoundary, gameState.player.y - GAME_CONFIG.PLAYER_SPEED * 3);
                     }
                 }
                 playSound(300, 0.1, 'square');
